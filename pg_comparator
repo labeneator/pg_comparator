@@ -2236,6 +2236,24 @@ sub table_cleanup($$$$)
   dbh_serialize($dbh, $db); # async_wait if needed
 }
 
+sub elementwise_compare
+{
+  my ($xref, $yref) = @_;
+
+  my $i = 0;
+  foreach my $x (@{$xref}) {
+    my $y = $yref->[$i++];
+    return 1 unless defined($y);
+    my $c = $x cmp $y;
+    return $c unless ($c == 0);
+  }
+  if ($i < scalar(@{$yref})) {
+    return -1;
+  } else {
+    return 0;
+  }
+}
+
 ############################################################### MERGE ALGORITHM
 
 # this is the core of the comparison algorithm
@@ -2312,7 +2330,7 @@ sub differences($$$$$$$$$$@)
 	  # their key checksums are equal
 	  $kcs1==$kcs2 and
 	  # for level 0, the keys are also equal
-	  ($level or @key1 eq @key2))
+	  ($level or elementwise_compare(\@key1, \@key2) == 0))
       {
 	die "unexpected undefined tuple checksum" # if not null is wrong...
 	  unless defined $tcs1 and defined $tcs2;
@@ -2337,7 +2355,7 @@ sub differences($$$$$$$$$$@)
 	     # or the left side id checksum is less than right side
 	     (defined $kcs1 and ($kcs1<$kcs2 or
 	       # or special case for level 0 on kcs collision
-	       (not $level and $kcs1==$kcs2 and @key1 lt @key2))))
+	       (not $level and $kcs1==$kcs2 and elementwise_compare(\@key1, \@key2) < 0))))
       {
 	# more kcs (/key) in table 1
 	if ($level) {
@@ -2357,7 +2375,7 @@ sub differences($$$$$$$$$$@)
 	     # or the right side id checksum is less than left side
 	     (defined $kcs2 and ($kcs1>$kcs2 or
 	       # special case for level 0 on kcs collision
-	       (not $level and $kcs1==$kcs2 and @key1 gt @key2))))
+	       (not $level and $kcs1==$kcs2 and elementwise_compare(\@key1, \@key2) > 0))))
       {
 	# more kcs in table 2
 	if ($level) {
