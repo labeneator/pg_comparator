@@ -1471,7 +1471,7 @@ sub firebird_cast($$) {
 sub pgsql_cksum_template($$) {
   my ($algo, $sz) = @_;
   return "CKSUM$sz((%s)::TEXT)" if $algo eq 'ck';
-  return pgsql_cast("DECODE(MD5(%s::TEXT),'hex')::BIT(" . 8*$sz . ")", $sz)
+  return pgsql_cast("('x'||MD5(%s::TEXT))::BIT(" . 8*$sz . ")", $sz)
     if $algo eq 'md5';
   die "unexpected checksum $algo for pgsql";
 }
@@ -1715,7 +1715,7 @@ my %M = (
     'ckoneatt' => {
       'md5' => sub { my ($sz, $att) = @_;
 	return pgsql_cast(
-	  "COALESCE(DECODE(MD5(${att}::TEXT),'hex'),''::BYTEA)" .
+	  "('x'||(MD5(${att}::TEXT)))" .
 	  "::BIT(" .  8*$sz . ")", $sz);
 	},
       'ck' => sub { my ($sz, $att) = @_; return "CKSUM$sz(${att}::TEXT)"; }
